@@ -1,0 +1,46 @@
+# Rhythm of Nature Networking Protocol
+
+Base Protocol:
+Bytes   Type    Info
+0-3     int     Packet Length excluding these first four bytes
+4-7     int     PacketID
+7-n     bytes   Content of the packets as defined below
+
+Special Cases:
+Type        Structure
+String      2 bytes unsigned short: encoded bytes length; n bytes: UTF-8 encoded string
+
+
+
++++Client-Side Packets+++
+ID  Name        Description
+1   Ping        Keepalive + RTT
+                8 bytes long: Nano Time of Client
+2   Login       Attempt Login
+                n bytes String: Password; 8 byte long: player id; n bytes String: Name;
+4   ChangeChar  Change Character Selection in Lobby
+                4 bytes int: Selected Character ID
+9   LogOut      Disconnect with special message (eg. disconnect / crash)
+                n bytes String: Message
+
+10  Join        Join Game Button in Lobby clicked
+                -
+
++++Server-Side Packet+++
+ID  Name        Description
+1   PingRes     Ping Response
+                8 bytes long: Nano Time of Client
+2   LoginFail   Login with bad password (also disconnects)
+                -
+3   LoginSuc    Login successful (followed by LobbyList 4)
+                1 byte bool: charSelectionScreen y/n
+4   LobbyList   Lists all people currently in the lobby
+                4 bytes int: amount of players; each player -> 8 byte long: player id; n bytes String: name; 4 bytes int: Selected Character ID
+8   Exception   Disconnect with Error code
+                n bytes String: Message
+9   LoggedOut   Successful log out (client can now disconnect)
+                -
+
+10  SendWorld   Send whole world
+                (Maybe compose of multiple simpler packets)
+

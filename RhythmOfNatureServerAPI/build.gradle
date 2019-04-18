@@ -1,0 +1,16 @@
+plugins {
+    id 'java'
+}
+
+group 'io.github.paul1365972'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(":rhythmofnatureserver")
+    
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}

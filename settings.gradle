@@ -1,0 +1,6 @@
+rootProject.name = 'rhythmofnature'
+include ':RhythmOfNatureServer'
+project(":RhythmOfNatureServer")?.name = 'rhythmofnatureserver'
+include 'RhythmOfNatureServerAPI'
+findProject(':RhythmOfNatureServerAPI')?.name = 'rhythmofnatureserverapi'
+

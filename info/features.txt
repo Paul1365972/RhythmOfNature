@@ -1,0 +1,60 @@
+# Rhythm of Nature Features
+
+Player statuses:
+-Saturation
+-Fat (?)
+-Vitamins
+-Minerals
+-Hydration
+-Sanity
+
+-Illness
+
+
+Plants:
+-Asclepias / Milkweed
+-GrainS (Wheat, Einkorn etc.)
+-Carrots (and the flowering carrots)
+
+
+Biomes:
+
+
+Animals:
+-Rabbits
+-Sheep (Types)
+-Goats (Types)
+
+
+World:
+-Day+Night: 12min
+-Year (60 days): 12 hours
+-Seasons: Spring Summer Fall Winter (each 15 days / 3 hours)
+
+
+Materials:
+-Flint Chips
+-Sharp stone
+-Hide/Skin/Dry Skin/Fur/Leather
+-Grain/Straw
+-Clay
+-Adobe (?)
+-Hatchet
+-Tree/Trunks/Woods/Sticks (Types)
+
+-Carriage
+
+-Galvanische Zelle
+
+
+Concepts:
+-Sterile stuff (Dropping stuff on ground makes them non sterile)
+-Arrow extraction
+-Abusing animals for antivenoms
+-Item Heat (Hot iron in inventory gives burns without Wooden Tongs)
+-Encapsulating Items (Items can contain others and group them together)
+
+
+
+
+

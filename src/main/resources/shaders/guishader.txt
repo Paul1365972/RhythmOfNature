@@ -1,0 +1,29 @@
+type:vertex
+
+#version 330 core
+
+in vec3 position;
+in vec2 texCoordsIn;
+
+out vec2 texCoords;
+
+uniform mat4 mvpMatrix;
+
+void main() {
+    gl_Position = mvpMatrix * vec4(position, 1.0);
+    texCoords = texCoordsIn;
+}
+
+type:fragment
+
+#version 330 core
+
+in vec2 texCoords;
+
+out vec4 outColor;
+
+uniform sampler2D sampler;
+
+void main() {
+    outColor = texture(sampler, texCoords);
+}

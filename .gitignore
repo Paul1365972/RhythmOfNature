@@ -1,0 +1,19 @@
+# Gradle Files
+.gradle
+
+# IntelliJ Files
+.idea
+*.iml
+
+# Output Files
+build
+out
+
+# Log Files
+*.log
+
+# LWJGLX Debug
+lwjglx-debug*.*
+
+# JVM Crash Logs
+hs_err_pid*
