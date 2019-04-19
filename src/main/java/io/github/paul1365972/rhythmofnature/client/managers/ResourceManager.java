@@ -11,12 +11,17 @@ import org.apache.logging.log4j.Logger;
 import javax.imageio.ImageIO;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class ResourceManager {
 	private static final Logger LOGGER = LogManager.getLogger();
@@ -40,12 +45,20 @@ public class ResourceManager {
 		LOGGER.info("Reloading Resources");
 		clear();
 		
-		File assets = new File("C:\\Users\\PC\\Desktop\\RON\\assets");
-		File[] mods = assets.listFiles(File::isDirectory);
-		if (mods != null) {
-			for (File mod : mods) {
-				loadTextures(mod);
+		String assetsPath = "assets";
+		String modulesPath = assetsPath + "/modules.txt";
+		List<String> modules = Collections.emptyList();
+		try (InputStream modulesIs = getClass().getClassLoader().getResourceAsStream(modulesPath)) {
+			if (modulesIs != null) {
+				modules = new BufferedReader(new InputStreamReader(modulesIs)).lines().collect(Collectors.toList());
+			} else {
+				LOGGER.warn("Could not find " + modulesPath);
 			}
+		} catch (IOException e) {
+			LOGGER.catching(e);
+		}
+		for (String module : modules) {
+			loadTextures(assetsPath + "/" + module);
 		}
 	}
 	
@@ -57,60 +70,79 @@ public class ResourceManager {
 		loadNullTexture();
 	}
 	
-	private void loadTextures(File dir) {
-		LOGGER.info("Loading Textures from: " + dir.getPath());
-		File jsonFile = new File(dir, "textures.json");
+	private void loadTextures(String assetsPath) {
+		LOGGER.info("Loading Textures from: " + assetsPath);
 		
-		try (JsonReader reader = gson.newJsonReader(new FileReader(jsonFile))) {
-			reader.beginArray();
-			while (reader.hasNext()) {
-				reader.beginObject();
-				String name = null;
-				String path = null;
-				while (reader.hasNext()) {
-					String key = reader.nextName();
-					if ("name".equalsIgnoreCase(key)) {
-						if (name != null)
-							LOGGER.info("Double defined Texture name \"" + name + "\"" + FileUtils.jsonReaderLocation(reader));
-						name = reader.nextString();
-					} else if ("path".equalsIgnoreCase(key)) {
-						if (path != null)
-							LOGGER.info("Double defined Texture path \"" + path + "\"" + FileUtils.jsonReaderLocation(reader));
-						path = reader.nextString();
-					} else {
-						LOGGER.info("Unknown Texture property \"" + key + "\"" + FileUtils.jsonReaderLocation(reader));
-						reader.skipValue();
+		try (InputStream is = ClassLoader.getSystemResourceAsStream(assetsPath + "/textures.json")) {
+			if (is != null) {
+				try (JsonReader reader = gson.newJsonReader(new InputStreamReader(is))) {
+					reader.beginArray();
+					while (reader.hasNext()) {
+						reader.beginObject();
+						String name = null;
+						String path = null;
+						while (reader.hasNext()) {
+							String key = reader.nextName();
+							if ("name".equalsIgnoreCase(key)) {
+								if (name != null)
+									LOGGER.info("Double defined Texture name \"" + name + "\"" + FileUtils.jsonReaderLocation(reader));
+								name = reader.nextString();
+							} else if ("path".equalsIgnoreCase(key)) {
+								if (path != null)
+									LOGGER.info("Double defined Texture path \"" + path + "\"" + FileUtils.jsonReaderLocation(reader));
+								path = reader.nextString();
+							} else {
+								LOGGER.info("Unknown Texture property \"" + key + "\"" + FileUtils.jsonReaderLocation(reader));
+								reader.skipValue();
+							}
+						}
+						if (name != null && path != null) {
+							int id = nextTextureId.getAndAdd(1);
+							name = name.toLowerCase();
+							if (!path.startsWith("/"))
+								path = '/' + path;
+							loadTexture(id, name, assetsPath + path);
+						} else {
+							String missing = "";
+							if (name == null)
+								missing += "and name";
+							if (path == null)
+								missing += "and path";
+							LOGGER.info("Incomplete Texture configuration, " + missing.substring(4) + " missing" + FileUtils
+									.jsonReaderLocation(reader));
+						}
+						reader.endObject();
 					}
+					reader.endArray();
 				}
-				if (name == null && path == null) {
-					LOGGER.info("Incomplete Texture configuration, name and path missing" + FileUtils.jsonReaderLocation(reader));
-				} else if (name == null) {
-					LOGGER.info("Incomplete Texture configuration, name missing" + FileUtils.jsonReaderLocation(reader));
-				} else if (path == null) {
-					LOGGER.info("Incomplete Texture configuration, path missing" + FileUtils.jsonReaderLocation(reader));
-				} else {
-					int id = nextTextureId.getAndAdd(1);
-					name = name.toLowerCase();
-					
-					File file = new File(dir, path);
-					BufferedImage img = ImageIO.read(file);
-					Texture texture = Texture.load(id, name, img);
-					textureIdMap.put(id, texture);
-					Texture previous = textureNameMap.put(name, texture);
-					if (previous != null)
-						LOGGER.info("Two textures with same name: " + name);
-					LOGGER.debug("Successfully loaded texture #" + id + " \"" + name + "\" from " + path);
-				}
-				reader.endObject();
+			} else {
+				LOGGER.warn("Could not find " + assetsPath + "/textures.json");
 			}
-			reader.endArray();
 		} catch (IOException e) {
 			LOGGER.warn("Error reading json", e);
 		}
 	}
 	
+	private void loadTexture(int id, String name, String totalPath) {
+		try (InputStream is = getClass().getClassLoader().getResourceAsStream(totalPath)) {
+			if (is != null) {
+				BufferedImage img = ImageIO.read(is);
+				Texture texture = Texture.load(id, name, img);
+				textureIdMap.put(id, texture);
+				Texture previous = textureNameMap.put(name, texture);
+				if (previous != null)
+					LOGGER.info("Two textures with same name: " + name);
+				LOGGER.debug("Successfully loaded texture #" + id + " \"" + name + "\" from " + totalPath);
+			} else {
+				LOGGER.warn("Could not find image " + totalPath + " \"" + name + "\"");
+			}
+		} catch (IOException e) {
+			LOGGER.warn("Error loading image " + totalPath + " \"" + name + "\"", e);
+		}
+	}
+	
 	private void loadNullTexture() {
-		int[] pixels = new int[] {Color.MAGENTA.getRGB(), Color.BLACK.getRGB(), Color.MAGENTA.getRGB(), Color.BLACK.getRGB()};
+		int[] pixels = new int[] {Color.MAGENTA.getRGB(), Color.BLACK.getRGB(), Color.BLACK.getRGB(), Color.MAGENTA.getRGB()};
 		BufferedImage img = new BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB);
 		img.setRGB(0, 0, 2, 2, pixels, 0, 2);
 		int id = nextTextureId.getAndAdd(1);

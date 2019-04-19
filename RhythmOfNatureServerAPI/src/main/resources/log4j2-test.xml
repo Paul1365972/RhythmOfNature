@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration packages="io.github.paul1365972.rhythmofnature" status="INFO">
+    <Appenders>
+        <Console name="stdout" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%d{HH:mm:ss.SSS}] [%t/%level]: [%c{1}] %msg%n%throwable" />
+            <ThresholdFilter level="WARN" onMatch="DENY" onMismatch="ACCEPT" />
+        </Console>
+        <Console name="stderr" target="SYSTEM_ERR">
+            <PatternLayout pattern="[%d{HH:mm:ss.SSS}] [%t/%level]: [%c{1}] %msg%n%throwable" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="DEBUG">
+            <AppenderRef level="TRACE" ref="stdout" />
+            <AppenderRef level="WARN" ref="stderr" />
+        </Root>
+    </Loggers>
+</Configuration>

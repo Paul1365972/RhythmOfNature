@@ -4,5 +4,4 @@ public interface ServerConfigurationI {
 	
 	String getSavesPath();
 	
-	
 }

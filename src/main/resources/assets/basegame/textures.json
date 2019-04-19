@@ -1,0 +1,50 @@
+[
+  {
+    "name": "White",
+    "path": "/textures/white.png"
+  },
+  {
+    "name": "Circle",
+    "path": "/textures/circle.png"
+  },
+  {
+    "name": "Blue",
+    "path": "/textures/blue.png"
+  },
+  {
+    "name": "Green",
+    "path": "/textures/green.png"
+  },
+  {
+    "name": "Player",
+    "path": "/textures/player.png"
+  },
+  {
+    "name": "Enemy",
+    "path": "/textures/enemy.png"
+  },
+  {
+    "name": "1",
+    "path": "/textures/one.png"
+  },
+  {
+    "name": "2",
+    "path": "/textures/two.png"
+  },
+  {
+    "name": "3",
+    "path": "/textures/three.png"
+  },
+  {
+    "name": "4",
+    "path": "/textures/four.png"
+  },
+  {
+    "name": "5",
+    "path": "/textures/five.png"
+  },
+  {
+    "name": "owo",
+    "path": "/textures/owo.png"
+  }
+]
