@@ -5,10 +5,10 @@ import io.github.paul1365972.rhythmofnature.client.managers.ResourceManager;
 import io.github.paul1365972.rhythmofnature.client.settings.GameSettings;
 import io.github.paul1365972.rhythmofnature.networking.ClientSocket;
 import io.github.paul1365972.rhythmofnature.renderer.MasterRenderer;
+import io.github.paul1365972.rhythmofnature.serverapi.RhythmOfNatureServerWrapper;
 import io.github.paul1365972.rhythmofnature.util.LWJGLUtils;
 import io.github.paul1365972.rhythmofnature.util.Timer;
 import io.github.paul1365972.rhythmofnature.world.WorldState;
-import io.github.paul1365972.rhythmofnatureserverapi.RhythmOfNatureServerWrapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

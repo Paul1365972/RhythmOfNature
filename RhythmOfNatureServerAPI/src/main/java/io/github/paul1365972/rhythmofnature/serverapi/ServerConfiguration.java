@@ -1,4 +1,4 @@
-package io.github.paul1365972.rhythmofnatureserverapi;
+package io.github.paul1365972.rhythmofnature.serverapi;
 
 import io.github.paul1365972.rhythmofnature.server.ServerConfigurationI;
 

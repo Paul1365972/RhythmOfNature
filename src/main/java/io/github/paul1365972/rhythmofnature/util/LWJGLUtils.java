@@ -33,8 +33,10 @@ public class LWJGLUtils {
 	}
 	
 	public static void initGLDebugFilter(Context context) {
+		LOGGER.info("Program Debug: " + context.isDebug() + ", OGL Debug: " + GL11.glGetBoolean(GL43.GL_DEBUG_OUTPUT));
 		if (!context.isDebug())
 			return;
+		
 		GLCapabilities caps = context.getDisplay().getCapabilities();
 		DebugMessageControlFunction func = null;
 		

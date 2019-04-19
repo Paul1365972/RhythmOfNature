@@ -7,23 +7,23 @@ plugins {
 group 'io.github.paul1365972'
 version '1.0-SNAPSHOT'
 
-project.ext.lwjglVersion = "3.2.1"
-project.ext.jomlVersion = "1.9.12"
-project.ext.fastutilVersion = "8.2.2"
-project.ext.gsonVersion = "2.8.5"
-project.ext.log4jVersion = "2.11.1"
+project.ext.lwjglVersion = '3.2.1'
+project.ext.jomlVersion = '1.9.12'
+project.ext.fastutilVersion = '8.2.2'
+project.ext.gsonVersion = '2.8.5'
+project.ext.log4jVersion = '2.11.2'
+project.ext.annotationsVersion = '17.0.0'
 
 allprojects {
     apply plugin: 'java'
     apply plugin: 'com.github.johnrengelman.shadow'
     
-    sourceCompatibility = 1.10
-    targetCompatibility = 1.10
+    sourceCompatibility = 1.11
+    targetCompatibility = 1.11
     
     dependencies {
         implementation "org.apache.logging.log4j:log4j-core:$log4jVersion"
-        
-        compileOnly "org.jetbrains:annotations:17.0.0"
+        compileOnly "org.jetbrains:annotations:$annotationsVersion"
     }
 }
 
@@ -31,27 +31,40 @@ application {
     mainClassName = "Start"
 }
 
-run {
-    applicationDefaultJvmArgs = []
+jar {
+    manifest {
+        attributes(
+            'Multi-Release': true
+        )
+    }
 }
 
-task runDebug() {
-    applicationDefaultJvmArgs = ["-Dcustomdebug=true"]
+clean {
+    delete 'lwjglx-debug-1.0.0.jar'
+    delete 'lwjglx-debug_license.txt'
+    delete 'tract.log'
 }
-runDebug.finalizedBy(run)
+
+task runDebug {
+    finalizedBy 'run'
+    doLast {
+        run.jvmArgs '-Dcustomdebug=true'
+    }
+}
 runDebug.group ApplicationPlugin.APPLICATION_GROUP
 
 task runTrace() {
-    File licenceFile = new File('lwjglx-debug_license.txt')
-    if (!licenceFile.exists())
-        new URL('https://build.lwjgl.org/addons/lwjglx-debug/lwjglx-debug_license.txt').withInputStream{ i -> licenceFile.withOutputStream{ it << i }}
-    
-    File jarFile = new File('lwjglx-debug-1.0.0.jar')
-    if (!jarFile.exists())
-        new URL('https://build.lwjgl.org/addons/lwjglx-debug/lwjglx-debug-1.0.0.jar').withInputStream{ i -> jarFile.withOutputStream{ it << i }}
-    
-    applicationDefaultJvmArgs = ["-Dcustomdebug=true", "-javaagent:lwjglx-debug-1.0.0.jar=t;e=*GLFW.glfwPollEvents,*GLFW.glfwGetTime;o=trace.log"]
-    finalizedBy "run"
+    finalizedBy 'runDebug'
+    doLast {
+        File licenceFile = new File('lwjglx-debug_license.txt')
+        if (!licenceFile.exists())
+            new URL('https://build.lwjgl.org/addons/lwjglx-debug/lwjglx-debug_license.txt').withInputStream{ i -> licenceFile.withOutputStream{ it << i }}
+        
+        File jarFile = new File('lwjglx-debug-1.0.0.jar')
+        if (!jarFile.exists())
+            new URL('https://build.lwjgl.org/addons/lwjglx-debug/lwjglx-debug-1.0.0.jar').withInputStream{ i -> jarFile.withOutputStream{ it << i }}
+        run.jvmArgs '-javaagent:lwjglx-debug-1.0.0.jar=t;e=*GLFW.glfwPollEvents,*GLFW.glfwGetTime;o=trace.log'
+    }
 }
 runTrace.group ApplicationPlugin.APPLICATION_GROUP
 
@@ -60,7 +73,7 @@ repositories {
 }
 
 dependencies {
-    implementation project(":rhythmofnatureserverapi")
+    implementation project(':rhythmofnatureserverapi')
     
     implementation "com.google.code.gson:gson:$gsonVersion"
     implementation "it.unimi.dsi:fastutil:$fastutilVersion"

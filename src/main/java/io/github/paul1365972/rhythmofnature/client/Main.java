@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.lang.management.ManagementFactory;
 import java.util.Arrays;
+import java.util.List;
 
 public class Main {
 	
@@ -15,6 +16,8 @@ public class Main {
 		String processId = ManagementFactory.getRuntimeMXBean().getName();
 		LOGGER.info("Process ID: " + processId.substring(0, processId.indexOf('@')));
 		LOGGER.info("Parsing arguments: " + Arrays.toString(args));
+		List<String> jvmArgs = ManagementFactory.getRuntimeMXBean().getInputArguments();
+		LOGGER.info("JVM arguments: " + jvmArgs.toString());
 		
 		Thread.currentThread().setName("Main Thread");
 		
