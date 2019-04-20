@@ -31,6 +31,10 @@ application {
 	mainClassName = "Start"
 }
 
+shadowJar {
+	exclude('*.sha1', '*.git')
+}
+
 jar {
 	manifest {
 		attributes(

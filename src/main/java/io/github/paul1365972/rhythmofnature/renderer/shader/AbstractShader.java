@@ -46,13 +46,13 @@ public abstract class AbstractShader {
 			
 			
 			GL20.glLinkProgram(programID);
-			LOGGER.debug("Creating Program");
+			LOGGER.debug("Creating Shader Program");
 			if (GL20.glGetProgrami(programID, GL20.GL_LINK_STATUS) != GL11.GL_TRUE)
-				LOGGER.error("Couldnt compile Program: " + GL20.glGetProgramInfoLog(programID));
+				LOGGER.error("Couldnt compile Shader Program: " + GL20.glGetProgramInfoLog(programID));
 			
 			GL20.glValidateProgram(programID);
 			if (GL20.glGetProgrami(programID, GL20.GL_VALIDATE_STATUS) != GL11.GL_TRUE)
-				LOGGER.error("Couldnt validate Program: " + GL20.glGetProgramInfoLog(programID));
+				LOGGER.error("Couldnt validate Shader Program: " + GL20.glGetProgramInfoLog(programID));
 			
 			if (vertexShader != -1)
 				GL20.glDeleteShader(vertexShader);

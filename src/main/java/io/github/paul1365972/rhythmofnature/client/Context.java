@@ -3,7 +3,9 @@ package io.github.paul1365972.rhythmofnature.client;
 import io.github.paul1365972.rhythmofnature.client.io.Display;
 import io.github.paul1365972.rhythmofnature.client.managers.ResourceManager;
 import io.github.paul1365972.rhythmofnature.client.settings.GameSettings;
+import io.github.paul1365972.rhythmofnature.networking.ClientProtocols;
 import io.github.paul1365972.rhythmofnature.networking.ClientSocket;
+import io.github.paul1365972.rhythmofnature.networking.ProtocolManager;
 import io.github.paul1365972.rhythmofnature.renderer.MasterRenderer;
 import io.github.paul1365972.rhythmofnature.serverapi.RhythmOfNatureServerWrapper;
 import io.github.paul1365972.rhythmofnature.util.LWJGLUtils;
@@ -13,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.imageio.ImageIO;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
@@ -39,8 +42,10 @@ public class Context {
 	private WorldState worldState;
 	private RhythmOfNatureServerWrapper server;
 	private ClientSocket networkingClient;
+	private ProtocolManager protocolManager;
 	
 	private int totalTicks, lastTotalTicks, totalRenders, lastTotalRenders;
+	private int pingRTT = -1;
 	
 	public Context(String name, String version) {
 		this.name = name;
@@ -71,14 +76,20 @@ public class Context {
 		renderer = new MasterRenderer();
 		renderer.init(this);
 		
+		protocolManager = new ProtocolManager();
+		ClientProtocols.registerDefault(protocolManager);
 		networkingClient = new ClientSocket(8 * 1024 * 1024);
-		
 	}
 	
 	public void tick() {
 		totalTicks++;
+		for (ByteBuffer packet; networkingClient.isActive() && (packet = networkingClient.poll()) != null; ) {
+			protocolManager.processPacket(this, packet);
+		}
+		
 		if (worldState != null)
 			worldState.tick(this);
+		
 	}
 	
 	public void render() {
@@ -100,6 +111,10 @@ public class Context {
 			tick();
 		}
 		
+		long now = Timer.getTime();
+		if (networkingClient.isActive() && networkingClient.nextPing(now, 5 * 1000))
+			networkingClient.send(ClientProtocols.prepPing(now));
+		
 		while (timer.updateDebugTime()) {
 			LOGGER.debug("TPS: {}, FPS: {}, Tick: {}", totalRenders - lastTotalRenders, totalTicks - lastTotalTicks, totalTicks);
 			lastTotalTicks = totalTicks;
@@ -114,6 +129,10 @@ public class Context {
 	}
 	
 	public void shutdownGameThread() {
+		networkingClient.stop();
+		if (server != null)
+			server.stop();
+		renderer.cleanUp();
 		display.destroyContext();
 		LOGGER.info("GameThread Exit");
 	}
@@ -214,5 +233,13 @@ public class Context {
 	
 	public int getTotalRenders() {
 		return totalRenders;
+	}
+	
+	public int getPingRTT() {
+		return pingRTT;
+	}
+	
+	public void setPingRTT(int pingRTT) {
+		this.pingRTT = pingRTT;
 	}
 }

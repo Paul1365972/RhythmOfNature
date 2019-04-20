@@ -43,15 +43,14 @@ public class ServerSocket {
 										 .noneMatch(selectionKey -> ((Connection) selectionKey.attachment()).hasSendable()))
 				running = false;
 		}
+		selector.keys().forEach(selectionKey -> {
+			try {
+				selectionKey.channel().close();
+			} catch (IOException e) {
+				LOGGER.catching(e);
+			}
+		});
 		try {
-			serverSocketChannel.close();
-			selector.keys().forEach(selectionKey -> {
-				try {
-					selectionKey.channel().close();
-				} catch (IOException e) {
-					LOGGER.catching(e);
-				}
-			});
 			selector.close();
 		} catch (IOException e) {
 			LOGGER.catching(e);

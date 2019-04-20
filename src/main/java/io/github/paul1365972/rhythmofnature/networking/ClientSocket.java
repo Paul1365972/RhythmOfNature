@@ -14,20 +14,46 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ClientSocket {
 	private static final Logger LOGGER = LogManager.getLogger();
-	
 	private final int readBufferSize;
 	private final ConcurrentLinkedQueue<Runnable> taskQueue = new ConcurrentLinkedQueue<>();
 	private final ConcurrentLinkedQueue<ByteBuffer> packetInQueue = new ConcurrentLinkedQueue<>();
 	private final ConcurrentLinkedQueue<ByteBuffer> packetOutQueue = new ConcurrentLinkedQueue<>();
 	private volatile boolean running = true;
-	private AtomicReference<ConnectionState> state = new AtomicReference<>(ConnectionState.DISCONNECTED);
+	private volatile boolean markedClosing = false;
 	private Selector selector;
-	private SelectionKey selectionKey;
 	private ByteBuffer readBuffer;
 	private ByteBuffer swapBuffer;
+	private AtomicReference<ConnectionState> state = new AtomicReference<>(ConnectionState.DISCONNECTED);
+	private volatile boolean softClosed = false;
+	private volatile boolean hardClosed = false;
+	
 	private IOException exception;
 	
-	private Thread networkingThread;
+	private long lastPing = 0;
+	
+	private Thread networkingThread = new Thread(() -> {
+		try {
+			while (running) {
+				runLoop();
+				if (markedClosing && state.get() == ConnectionState.DISCONNECTED)
+					running = false;
+			}
+		} catch (Exception e) {
+			LOGGER.catching(e);
+		}
+		selector.keys().forEach(selectionKey -> {
+			try {
+				selectionKey.channel().close();
+			} catch (IOException e) {
+				LOGGER.catching(e);
+			}
+		});
+		try {
+			selector.close();
+		} catch (IOException e) {
+			LOGGER.catching(e);
+		}
+	}, "Networking Client Thread");
 	
 	public ClientSocket(int readBufferSize) {
 		this.readBufferSize = readBufferSize;
@@ -38,26 +64,31 @@ public class ClientSocket {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		networkingThread = new Thread(() -> {
-			try {
-				while (running) {
-					runLoop();
-				}
-				selector.close();
-			} catch (Exception e) {
-				LOGGER.warn("Networking Error", e);
-			}
-		}, "Networking Client Thread");
-		networkingThread.setDaemon(true);
+		
 		networkingThread.start();
 	}
 	
+	public boolean nextPing(long nanoTime, long interval) {
+		if (!isActive())
+			return false;
+		if (nanoTime > lastPing + interval) {
+			lastPing = nanoTime;
+			return true;
+		}
+		return false;
+	}
+	
 	public void send(ByteBuffer buffer) {
-		packetOutQueue.add(buffer);
+		if (isActive())
+			packetOutQueue.add(buffer);
 	}
 	
 	public ByteBuffer poll() {
-		return packetInQueue.poll();
+		return isActive() ? packetInQueue.poll() : null;
+	}
+	
+	public boolean isActive() {
+		return running && !markedClosing && !softClosed && !hardClosed && state.get() == ConnectionState.CONNECTED;
 	}
 	
 	public IOException getException() {
@@ -75,14 +106,19 @@ public class ClientSocket {
 	
 	public void connect(String host, int port) {
 		if (!state.compareAndSet(ConnectionState.DISCONNECTED, ConnectionState.CONNECTING))
-			throw new IllegalStateException("Illegal WorldState " + state.get());
+			throw new IllegalStateException("Can only connect when disconnected");
+		
+		packetInQueue.clear();
+		packetOutQueue.clear();
+		readBuffer.clear();
+		hardClosed = softClosed = false;
 		
 		taskQueue.add(() -> {
 			try {
 				SocketChannel socketChannel = SocketChannel.open();
 				socketChannel.configureBlocking(false);
 				boolean connected = socketChannel.connect(new InetSocketAddress(host, port));
-				selectionKey = socketChannel.register(selector, connected ? SelectionKey.OP_READ : SelectionKey.OP_CONNECT, null);
+				socketChannel.register(selector, connected ? SelectionKey.OP_READ : SelectionKey.OP_CONNECT, null);
 				if (connected)
 					state.set(ConnectionState.CONNECTED);
 			} catch (IOException e) {
@@ -93,16 +129,20 @@ public class ClientSocket {
 		selector.wakeup();
 	}
 	
-	public void disconnect() {
+	public void disconnectSoft() {
 		state.set(ConnectionState.DISCONNECTING);
-		taskQueue.add(() -> {
-			if (selectionKey != null)
-				selectionKey.cancel();
-			selector.wakeup();
-			packetInQueue.clear();
-			packetOutQueue.clear();
-			readBuffer.clear();
-		});
+		softClosed = true;
+		selector.wakeup();
+	}
+	
+	public void disconnectHard() {
+		state.set(ConnectionState.DISCONNECTING);
+		hardClosed = true;
+		selector.wakeup();
+	}
+	
+	public void markClosed() {
+		markedClosing = true;
 		selector.wakeup();
 	}
 	
@@ -119,68 +159,80 @@ public class ClientSocket {
 	private void runLoop() throws IOException {
 		for (Runnable task; (task = taskQueue.poll()) != null; task.run()) ;
 		
-		if (selectionKey != null && selectionKey.isValid() && selectionKey.interestOps() != SelectionKey.OP_CONNECT) {
-			selectionKey.interestOps((packetOutQueue.isEmpty() ? 0 : SelectionKey.OP_WRITE) | SelectionKey.OP_READ);
-		}
+		selector.keys().stream().filter(key -> key.isValid() && key.interestOps() != SelectionKey.OP_CONNECT).forEach(key -> {
+			boolean hasWritable = !packetOutQueue.isEmpty();
+			key.interestOps(hasWritable ? (SelectionKey.OP_WRITE | SelectionKey.OP_READ) : SelectionKey.OP_READ);
+		});
 		
 		selector.select();
-		if (!selector.selectedKeys().isEmpty()) {
+		selector.keys().forEach(selectionKey -> {
 			try {
-				if (selectionKey != null && selectionKey.isValid() && selectionKey.isConnectable()) {
-					if (state.compareAndSet(ConnectionState.CONNECTING, ConnectionState.CONNECTED)) {
-						boolean nowConnected = ((SocketChannel) selectionKey.channel()).finishConnect();
-						if (nowConnected)
-							selectionKey.interestOps(SelectionKey.OP_READ);
-					}
+				if (selectionKey.isValid() && selectionKey.isConnectable()) {
+					connect(selectionKey);
 				}
-				if (selectionKey != null && selectionKey.isValid() && selectionKey.isWritable()) {
-					SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
-					for (ByteBuffer cur; (cur = packetOutQueue.peek()) != null; packetOutQueue.remove()) {
-						socketChannel.write(cur);
-						if (cur.hasRemaining())
-							break;
-					}
+				if (selectionKey.isValid() && selectionKey.isWritable()) {
+					write(selectionKey);
 				}
-				if (selectionKey != null && selectionKey.isValid() && selectionKey.isReadable()) {
-					SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
-					int readNum = socketChannel.read(readBuffer);
-					if (readNum == -1)
-						throw new IOException("End of Stream reached, this is no error REMOVE ME, graceful Disconnect yay");
-					
-					readBuffer.flip();
-					int dataEnd = readBuffer.limit();
-					while (readBuffer.remaining() >= 4) {
-						int packetSize = readBuffer.getInt(readBuffer.position());
-						if (readBuffer.capacity() < packetSize + 4)
-							throw new IOException("Illegal Packet Size: " + packetSize);
-						if (readBuffer.remaining() < packetSize + 4)
-							break;
-						readBuffer.position(readBuffer.position() + 4);
-						readBuffer.limit(readBuffer.position() + packetSize);
-						ByteBuffer packetBuffer = ByteBuffer.allocate(packetSize);
-						packetInQueue.add(packetBuffer.put(readBuffer).flip());
-						readBuffer.limit(dataEnd);
-					}
-					ByteBuffer tmp = swapBuffer.clear();
-					tmp.put(readBuffer);
-					readBuffer.clear().put(tmp);
-					// Double copy is bad, optimise with swapping
+				if (selectionKey.isValid() && selectionKey.isReadable()) {
+					read(selectionKey);
 				}
 			} catch (IOException e) {
 				error(e);
 				LOGGER.warn("Network error", e);
 				selectionKey.cancel();
 			}
-		}
-		if (selectionKey != null && !selectionKey.isValid()) {
-			try {
+		});
+		for (SelectionKey selKey : selector.keys()) {
+			if (hardClosed || (softClosed && packetOutQueue.isEmpty()))
+				selKey.cancel();
+			if (!selKey.isValid()) {
+				selKey.channel().close();
 				state.set(ConnectionState.DISCONNECTED);
-				selectionKey.channel().close();
-			} catch (IOException e) {
-				error(e);
-				LOGGER.error("Error closing invalidated channel", e);
 			}
 		}
+	}
+	
+	private void connect(SelectionKey selectionKey) throws IOException {
+		if (state.compareAndSet(ConnectionState.CONNECTING, ConnectionState.CONNECTED)) {
+			boolean nowConnected = ((SocketChannel) selectionKey.channel()).finishConnect();
+			if (nowConnected)
+				selectionKey.interestOps(SelectionKey.OP_READ);
+		}
+	}
+	
+	private void write(SelectionKey selectionKey) throws IOException {
+		SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
+		for (ByteBuffer cur; (cur = packetOutQueue.peek()) != null; packetOutQueue.remove()) {
+			socketChannel.write(cur);
+			if (cur.hasRemaining())
+				break;
+		}
+	}
+	
+	private void read(SelectionKey selectionKey) throws IOException {
+		SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
+		int readNum = socketChannel.read(readBuffer);
+		if (readNum == -1)
+			throw new IOException("End of Stream reached, this is no error TODO REMOVE ME, graceful Disconnect yay");
+		
+		readBuffer.flip();
+		int dataEnd = readBuffer.limit();
+		while (readBuffer.remaining() >= 4) {
+			int packetSize = readBuffer.getInt(readBuffer.position());
+			if (readBuffer.capacity() < packetSize + 4)
+				throw new IOException("Illegal Packet Size: " + packetSize);
+			if (readBuffer.remaining() < packetSize + 4)
+				break;
+			readBuffer.position(readBuffer.position() + 4);
+			readBuffer.limit(readBuffer.position() + packetSize);
+			ByteBuffer packetBuffer = ByteBuffer.allocate(packetSize);
+			packetInQueue.add(packetBuffer.put(readBuffer).flip());
+			readBuffer.limit(dataEnd);
+		}
+		ByteBuffer tmp = swapBuffer.clear();
+		tmp.put(readBuffer);
+		readBuffer.clear().put(tmp);
+		// Double copy is bad, optimise with swapping
 	}
 	
 	public enum ConnectionState {
