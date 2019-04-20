@@ -56,7 +56,7 @@ public class LWJGLUtils {
 		
 		func.invoke(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, null, true);
 		//func.invoke(GL43.GL_DEBUG_SOURCE_API, GL43.GL_DEBUG_TYPE_OTHER, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
-		func.invoke(GL43.GL_DEBUG_SOURCE_API, GL43.GL_DEBUG_TYPE_OTHER, GL43.GL_DONT_CARE, new int[] {0x20071}, false);
+		func.invoke(GL43.GL_DEBUG_SOURCE_API, GL43.GL_DEBUG_TYPE_OTHER, GL43.GL_DONT_CARE, new int[] {0x20061, 0x20071}, false);
 	}
 	
 	@FunctionalInterface

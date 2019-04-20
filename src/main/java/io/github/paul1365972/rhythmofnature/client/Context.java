@@ -94,9 +94,6 @@ public class Context {
 	
 	public void render() {
 		totalRenders++;
-		display.updateDimensions();
-		if (display.pollResized())
-			renderer.resize(this);
 		renderer.render(this);
 		
 		display.swapBuffers();
@@ -105,6 +102,9 @@ public class Context {
 	public void runLoop() {
 		processScheduledGameTasks();
 		display.updateDimensions();
+		if (display.pollResized())
+			renderer.resize(this);
+		
 		timer.update(20);
 		
 		for (int i = 0; i < timer.getElapsedTicks(); i++) {
@@ -116,7 +116,7 @@ public class Context {
 			networkingClient.send(ClientProtocols.prepPing(now));
 		
 		while (timer.updateDebugTime()) {
-			LOGGER.debug("TPS: {}, FPS: {}, Tick: {}", totalRenders - lastTotalRenders, totalTicks - lastTotalTicks, totalTicks);
+			LOGGER.debug("FPS: {}, TPS: {}, Tick: {}", totalRenders - lastTotalRenders, totalTicks - lastTotalTicks, totalTicks);
 			lastTotalTicks = totalTicks;
 			lastTotalRenders = totalRenders;
 		}

@@ -53,13 +53,13 @@ public class DataBuffer {
 		return new DataBuffer(BUFFER_FACTORY.apply(capacity));
 	}
 	
+	// Buffer Operations
+	
 	public DataBuffer clear() {
 		finishAndMod(BufferType.BYTE);
 		bBuffer.clear();
 		return this;
 	}
-	
-	// Buffer Operations
 	
 	public DataBuffer flip() {
 		finishAndMod(BufferType.BYTE);
@@ -100,13 +100,21 @@ public class DataBuffer {
 		return new DataBuffer(bBuffer.slice(), fBuffer.slice(), iBuffer.slice(), BufferType.BYTE);
 	}
 	
+	// State Operations
+	
+	public DataBuffer incPos(int offset) {
+		finishAndMod(BufferType.BYTE);
+		bBuffer.position(bBuffer.position() + offset);
+		return this;
+	}
+	
+	// Byte Methods
+	
 	public DataBuffer put(byte b) {
 		finishAndMod(BufferType.BYTE);
 		bBuffer.put(b);
 		return this;
 	}
-	
-	// Byte Methods
 	
 	public DataBuffer put(int index, byte b) {
 		finishIfNotMod(BufferType.BYTE);
@@ -154,13 +162,13 @@ public class DataBuffer {
 		return this;
 	}
 	
+	// Float Buffer
+	
 	public DataBuffer put(float f) {
 		finishAndMod(BufferType.FLOAT);
 		fBuffer.put(f);
 		return this;
 	}
-	
-	// Float Buffer
 	
 	public DataBuffer put(int index, float f) {
 		finishIfNotMod(BufferType.FLOAT);
@@ -208,13 +216,13 @@ public class DataBuffer {
 		return this;
 	}
 	
+	// Int Methods
+	
 	public DataBuffer put(int i) {
 		finishAndMod(BufferType.INT);
 		iBuffer.put(i);
 		return this;
 	}
-	
-	// Int Methods
 	
 	public DataBuffer put(int index, int i) {
 		finishIfNotMod(BufferType.INT);
@@ -262,12 +270,12 @@ public class DataBuffer {
 		return this;
 	}
 	
+	
+	// Advanced Methods
+	
 	public ByteBuffer bytes() {
 		return finishIfNotMod(BufferType.BYTE).bBuffer;
 	}
-	
-	
-	// Advanced Methods
 	
 	public FloatBuffer floats() {
 		return finishIfNotMod(BufferType.FLOAT).fBuffer;

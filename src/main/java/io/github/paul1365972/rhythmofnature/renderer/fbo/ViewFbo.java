@@ -11,6 +11,6 @@ public class ViewFbo extends AbstractFbo {
 	@Override
 	protected void onRedefine() {
 		addColorTexture2D(0, GL11.GL_NEAREST, GL11.GL_NEAREST);
-		//addDepthBuffer();
+		addDepthBuffer();
 	}
 }

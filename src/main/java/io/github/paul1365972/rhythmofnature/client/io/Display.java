@@ -247,7 +247,7 @@ public class Display {
 		LOGGER.debug("Making context current");
 		glfwMakeContextCurrent(window);
 		capabilities = GL.createCapabilities();
-		//TODO setVsync(context);
+		setVsync(false);
 		
 		LOGGER.info("LWJGL Version: {}", Version.getVersion());
 		LOGGER.info("OpenGL Version: {}", GL11.glGetString(GL11.GL_VERSION));

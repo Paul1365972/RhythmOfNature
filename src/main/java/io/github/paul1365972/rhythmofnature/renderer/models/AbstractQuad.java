@@ -21,8 +21,8 @@ public abstract class AbstractQuad {
 		
 		GL30.glBindVertexArray(vaoId);
 		float[] vertices = new float[] {-0.5f, -0.5f, 0, 0.5f, -0.5f, 0, 0.5f, 0.5f, 0, -0.5f, 0.5f, 0};
-		float[] texcoords = new float[] {0, 1, 0, 0, 1, 0, 1, 1};
-		int[] indices = new int[] {0, 1, 2, 0, 2, 3};
+		float[] texcoords = new float[] {0, 1, 1, 1, 1, 0, 0, 0};
+		short[] indices = new short[] {0, 1, 2, 0, 2, 3};
 		vertexCount = indices.length;
 		
 		GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, genVBO());
@@ -64,13 +64,13 @@ public abstract class AbstractQuad {
 	
 	protected void drawSingle() {
 		GL30.glBindVertexArray(vaoId);
-		GL11.glDrawElements(GL15.GL_TRIANGLES, vertexCount, GL11.GL_UNSIGNED_INT, 0);
+		GL11.glDrawElements(GL15.GL_TRIANGLES, vertexCount, GL11.GL_UNSIGNED_SHORT, 0);
 		GL30.glBindVertexArray(0);
 	}
 	
 	protected void drawInstanced(int primcount) {
 		GL30.glBindVertexArray(vaoId);
-		GL31.glDrawElementsInstanced(GL15.GL_TRIANGLES, vertexCount, GL11.GL_UNSIGNED_INT, 0, primcount);
+		GL31.glDrawElementsInstanced(GL15.GL_TRIANGLES, vertexCount, GL11.GL_UNSIGNED_SHORT, 0, primcount);
 		GL30.glBindVertexArray(0);
 	}
 	

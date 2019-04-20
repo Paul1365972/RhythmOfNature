@@ -11,6 +11,7 @@ public class RhythmOfNature {
 	private static final Logger LOGGER = LogManager.getLogger();
 	
 	public void run() {
+		//try { Thread.sleep(10 * 1000); } catch (InterruptedException ignored) { }
 		LOGGER.info("Starting Rhythm Of Nature Client");
 		Context context = new Context(NAME, VERSION);
 		

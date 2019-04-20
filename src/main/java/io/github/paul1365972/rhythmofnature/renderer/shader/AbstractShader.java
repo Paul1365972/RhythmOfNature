@@ -2,7 +2,7 @@ package io.github.paul1365972.rhythmofnature.renderer.shader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -135,13 +135,13 @@ public abstract class AbstractShader {
 		GL20.glUniform4f(location, x, y, z, w);
 	}
 	
-	protected void loadMatrix(int location, Matrix4f matrix) {
+	protected void loadMatrix(int location, Matrix4fc matrix) {
 		buffer.clear();
 		matrix.get(buffer);
 		GL20.glUniformMatrix4fv(location, false, buffer);
 	}
 	
-	protected void loadMatrices(int location, Matrix4f[] matrices) {
+	protected void loadMatrices(int location, Matrix4fc[] matrices) {
 		FloatBuffer buffer = BufferUtils.createFloatBuffer(16 * matrices.length);
 		for (int i = 0; i < matrices.length; i++) {
 			matrices[i].get(i * 16, buffer);
@@ -149,7 +149,7 @@ public abstract class AbstractShader {
 		GL20.glUniformMatrix4fv(location, false, buffer);
 	}
 	
-	protected void loadAsyncMatrix(int location, Matrix4f matrix) {
+	protected void loadAsyncMatrix(int location, Matrix4fc matrix) {
 		FloatBuffer asyncBuffer = BufferUtils.createFloatBuffer(16);
 		matrix.get(asyncBuffer);
 		GL20.glUniformMatrix4fv(location, false, asyncBuffer);

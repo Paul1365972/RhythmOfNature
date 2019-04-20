@@ -1,7 +1,7 @@
 package io.github.paul1365972.rhythmofnature.renderer.models;
 
 import io.github.paul1365972.rhythmofnature.util.DataBuffer;
-import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.lwjgl.opengl.GL15;
 
 public class Quads extends AbstractQuad {
@@ -17,8 +17,6 @@ public class Quads extends AbstractQuad {
 		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 		defineVertexAttribMat4(2);
 		
-		GL15.glBufferData(GL15.GL_ARRAY_BUFFER, 16 * 4, GL15.GL_STREAM_DRAW);
-		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 		GL15.glBufferData(GL15.GL_ARRAY_BUFFER, maxObjects * S_OBJECT, GL15.GL_STREAM_DRAW);
 		vboSize = maxObjects * S_OBJECT;
 		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
@@ -32,23 +30,26 @@ public class Quads extends AbstractQuad {
 		buffer.clear();
 	}
 	
-	public void push(Matrix4f matrix) {
+	public void push(Matrix4fc matrix) {
 		objects++;
-		if (maxObjects > objects) {
+		if (objects > maxObjects) {
+			if (maxObjects == 0)
+				maxObjects = 1;
 			maxObjects *= 2;
 			buffer.resize(maxObjects * S_OBJECT, false);
 		}
 		matrix.get(buffer.modBytes());
+		buffer.incPos(16 * 4);
 	}
 	
 	public void draw() {
 		buffer.flip();
 		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-		if (vboSize != buffer.bytes().capacity()) {
-			vboSize = buffer.bytes().remaining();
+		if (vboSize < buffer.bytes().remaining()) {
 			GL15.glBufferData(GL15.GL_ARRAY_BUFFER, buffer.bytes(), GL15.GL_STREAM_DRAW);
+			vboSize = buffer.bytes().remaining();
 		} else {
-			//GL15.nglBufferData(GL15.GL_ARRAY_BUFFER, buffer.bytes().remaining(), 0, GL15.GL_STREAM_DRAW);
+			GL15.nglBufferData(GL15.GL_ARRAY_BUFFER, vboSize, 0, GL15.GL_STREAM_DRAW);
 			GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, buffer.bytes());
 		}
 		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
