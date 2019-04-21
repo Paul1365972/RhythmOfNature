@@ -2,7 +2,6 @@ package io.github.paul1365972.rhythmofnature.renderer;
 
 import io.github.paul1365972.rhythmofnature.client.Context;
 import io.github.paul1365972.rhythmofnature.client.io.Display;
-import io.github.paul1365972.rhythmofnature.client.managers.ResourceManager;
 import io.github.paul1365972.rhythmofnature.renderer.fbo.DefaultFbo;
 import io.github.paul1365972.rhythmofnature.renderer.fbo.ViewFbo;
 import io.github.paul1365972.rhythmofnature.renderer.models.Quad;
@@ -11,9 +10,13 @@ import io.github.paul1365972.rhythmofnature.renderer.shader.GuiShader;
 import io.github.paul1365972.rhythmofnature.renderer.shader.InstancedAtlasShader;
 import io.github.paul1365972.rhythmofnature.renderer.shader.PPShader;
 import io.github.paul1365972.rhythmofnature.renderer.textures.Texture;
-import io.github.paul1365972.rhythmofnature.util.MvpMatrix;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MasterRenderer {
 	
@@ -21,11 +24,13 @@ public class MasterRenderer {
 	private ViewFbo viewFbo;
 	
 	private GuiShader guiShader;
-	private InstancedAtlasShader particleShader;
+	private InstancedAtlasShader instancedAtlasShader;
 	private PPShader ppShader;
 	
 	private Quad quad;
 	private Quads quads;
+	
+	private List<Painter.RenderObject> renderQueue = new ArrayList<>();
 	
 	public void init(Context context) {
 		GL13.glEnable(GL13.GL_BLEND);
@@ -44,46 +49,32 @@ public class MasterRenderer {
 		viewFbo = new ViewFbo(context.getDisplay().getViewFramebufferWidth(), context.getDisplay().getViewFramebufferHeight());
 		
 		guiShader = new GuiShader();
-		particleShader = new InstancedAtlasShader();
+		instancedAtlasShader = new InstancedAtlasShader();
 		ppShader = new PPShader();
 		
 		quad = new Quad();
 		quads = new Quads();
 	}
 	
-	public void renderObjects() {
-	
-	}
-	
 	public void render(Context context) {
-		ResourceManager rm = context.getResourceManager();
 		viewFbo.bindFrameBuffer();
 		GL11.glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
 		GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
 		
-		particleShader.start();
+		Int2ObjectMap<List<Painter.RenderObject>> atlasMap = new Int2ObjectOpenHashMap<>();
+		renderQueue.forEach(o -> atlasMap.computeIfAbsent(o.getTexture().getBackingTexture(), v -> new ArrayList<>()).add(o));
+		renderQueue.clear();
 		
-		GL13.glActiveTexture(GL13.GL_TEXTURE0);
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, rm.getTexture("player2").getBackingTexture());
-		
-		quads.reset();
-		MvpMatrix mat = new MvpMatrix();
-		mat.setProjection();
-		mat.setView(0, 0, 0, 1, 1);
-		
-		for (int i = -10; i < 10; i++) {
-			for (int j = -10; j < 10; j++) {
-				mat.setModel(i / 15f, j / 15f, 0, 1 / 17f, 1 / 17f);
-				String texName = i % 2 == 0 ? (j % 2 == 0 ? "white2" : "player2") : (j % 2 == 0 ? "blue2" : "green2");
-				quads.push(mat.get(), rm.getTexture(texName).getAtlasPos());
-			}
-		}
-		
-		quads.draw();
-		
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-		
-		particleShader.stop();
+		instancedAtlasShader.start();
+		atlasMap.forEach((backingTexture, renderObjects) -> {
+			GL13.glActiveTexture(GL13.GL_TEXTURE0);
+			GL11.glBindTexture(GL11.GL_TEXTURE_2D, backingTexture);
+			quads.reset();
+			renderObjects.forEach(renderObject -> quads.push(renderObject.getTransform(), renderObject.getTexture().getAtlasPos()));
+			quads.draw();
+			GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		});
+		instancedAtlasShader.stop();
 		
 		renderPostProcessing(context);
 	}
@@ -111,6 +102,10 @@ public class MasterRenderer {
 		ppShader.stop();
 	}
 	
+	public List<Painter.RenderObject> getRenderQueue() {
+		return renderQueue;
+	}
+	
 	public void resize(Context context) {
 		defaultFbo.update(context.getDisplay().getFramebufferWidth(), context.getDisplay().getFramebufferHeight());
 		viewFbo.update(context.getDisplay().getViewFramebufferWidth(), context.getDisplay().getViewFramebufferHeight());
@@ -120,7 +115,7 @@ public class MasterRenderer {
 		defaultFbo.cleanUp();
 		viewFbo.cleanUp();
 		guiShader.cleanUp();
-		particleShader.cleanUp();
+		instancedAtlasShader.cleanUp();
 		ppShader.cleanUp();
 		quad.cleanUp();
 		quads.cleanUp();

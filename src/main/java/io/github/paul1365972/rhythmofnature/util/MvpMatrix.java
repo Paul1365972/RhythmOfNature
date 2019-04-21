@@ -18,6 +18,10 @@ public class MvpMatrix {
 		return projection.mul(view, vp).mul(model, mvp);
 	}
 	
+	public Matrix4f getNew() {
+		return projection.mul(view, vp).mul(model, new Matrix4f());
+	}
+	
 	public void resetModel() {
 		model.identity();
 	}
@@ -36,5 +40,21 @@ public class MvpMatrix {
 	
 	public void setProjection() {
 		projection.identity().setOrthoSymmetric(16f / 9f, 1, -1, 1);
+	}
+	
+	public Matrix4f getVp() {
+		return vp;
+	}
+	
+	public Matrix4f getModel() {
+		return model;
+	}
+	
+	public Matrix4f getView() {
+		return view;
+	}
+	
+	public Matrix4f getProjection() {
+		return projection;
 	}
 }

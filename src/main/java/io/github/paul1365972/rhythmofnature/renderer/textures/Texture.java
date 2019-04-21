@@ -74,7 +74,6 @@ public class Texture {
 		Texture texture1 = (Texture) o;
 		
 		return texture == texture1.texture;
-		
 	}
 	
 	@Override

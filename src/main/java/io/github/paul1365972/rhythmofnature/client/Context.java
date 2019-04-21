@@ -7,8 +7,10 @@ import io.github.paul1365972.rhythmofnature.networking.ClientProtocols;
 import io.github.paul1365972.rhythmofnature.networking.ClientSocket;
 import io.github.paul1365972.rhythmofnature.networking.ProtocolManager;
 import io.github.paul1365972.rhythmofnature.renderer.MasterRenderer;
+import io.github.paul1365972.rhythmofnature.renderer.Painter;
 import io.github.paul1365972.rhythmofnature.serverapi.RhythmOfNatureServerWrapper;
 import io.github.paul1365972.rhythmofnature.util.LWJGLUtils;
+import io.github.paul1365972.rhythmofnature.util.MvpMatrix;
 import io.github.paul1365972.rhythmofnature.util.Timer;
 import io.github.paul1365972.rhythmofnature.world.WorldState;
 import org.apache.logging.log4j.LogManager;
@@ -94,9 +96,36 @@ public class Context {
 	
 	public void render() {
 		totalRenders++;
+		
+		if (worldState != null) {
+			MvpMatrix mvp = new MvpMatrix();
+			mvp.setProjection();
+			worldState.render(this, new Painter(renderer.getRenderQueue(), mvp));
+		}
+		
+		MvpMatrix mvp = new MvpMatrix();
+		mvp.setProjection();
+		testRender(this, new Painter(renderer.getRenderQueue(), mvp));
+		
 		renderer.render(this);
 		
 		display.swapBuffers();
+	}
+	
+	private void testRender(Context context, Painter painter) {
+		ResourceManager rm = context.getResourceManager();
+		painter.setView(0, 0, 0, 1, 1);
+		
+		for (int i = -10; i < 10; i++) {
+			for (int j = -10; j < 10; j++) {
+				painter.setTransform(i / 15f, j / 15f, 0, 1 / 17f, 1 / 17f);
+				String texName = i % 2 == 0 ? (j % 2 == 0 ? "white2" : "player2") : (j % 2 == 0 ? "blue2" : "green2");
+				painter.draw(rm.getTexture(texName));
+			}
+		}
+		
+		painter.setTransform(0.1f / 2 - 16 / 9f / 2, 0.5f - 0.1f / 2, 0, 0.1f, 0.1f);
+		painter.draw(rm.getTexture("owo"));
 	}
 	
 	public void runLoop() {
