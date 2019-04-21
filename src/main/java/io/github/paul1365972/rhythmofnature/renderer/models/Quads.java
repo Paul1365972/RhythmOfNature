@@ -1,12 +1,13 @@
 package io.github.paul1365972.rhythmofnature.renderer.models;
 
+import io.github.paul1365972.rhythmofnature.renderer.textures.AtlasPos;
 import io.github.paul1365972.rhythmofnature.util.DataBuffer;
 import org.joml.Matrix4fc;
 import org.lwjgl.opengl.GL15;
 
 public class Quads extends AbstractQuad {
 	
-	private static final int S_OBJECT = 1 * S_FM44;
+	private static final int S_OBJECT = 1 * S_FM44 + 1 * S_FV4;
 	private int vbo, vboSize;
 	private DataBuffer buffer;
 	private int objects, maxObjects;
@@ -15,7 +16,8 @@ public class Quads extends AbstractQuad {
 	public void setup() {
 		vbo = genVBO();
 		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-		defineVertexAttribMat4(2);
+		defineVertexAttribMat4(2, S_OBJECT, 0);
+		defineVertexAttribVec4(6, S_OBJECT, S_FM44);
 		
 		GL15.glBufferData(GL15.GL_ARRAY_BUFFER, maxObjects * S_OBJECT, GL15.GL_STREAM_DRAW);
 		vboSize = maxObjects * S_OBJECT;
@@ -30,7 +32,7 @@ public class Quads extends AbstractQuad {
 		buffer.clear();
 	}
 	
-	public void push(Matrix4fc matrix) {
+	public void push(Matrix4fc matrix, AtlasPos atlasPos) {
 		objects++;
 		if (objects > maxObjects) {
 			if (maxObjects == 0)
@@ -40,6 +42,7 @@ public class Quads extends AbstractQuad {
 		}
 		matrix.get(buffer.modBytes());
 		buffer.incPos(16 * 4);
+		atlasPos.get(buffer.modBytes());
 	}
 	
 	public void draw() {

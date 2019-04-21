@@ -3,8 +3,11 @@ package io.github.paul1365972.rhythmofnature.client.managers;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import io.github.paul1365972.rhythmofnature.RhythmOfNature;
-import io.github.paul1365972.rhythmofnature.client.io.FileUtils;
-import io.github.paul1365972.rhythmofnature.renderer.objects.Texture;
+import io.github.paul1365972.rhythmofnature.renderer.textures.IndexedRenderableTexture;
+import io.github.paul1365972.rhythmofnature.renderer.textures.SimpleTexture;
+import io.github.paul1365972.rhythmofnature.renderer.textures.SubTexture;
+import io.github.paul1365972.rhythmofnature.renderer.textures.Texture;
+import io.github.paul1365972.rhythmofnature.renderer.textures.TextureAtlas;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,8 +33,9 @@ public class ResourceManager {
 	private Gson gson = new Gson();
 	private AtomicInteger nextTextureId = new AtomicInteger();
 	
-	private Map<Integer, Texture> textureIdMap = new HashMap<>();
-	private Map<String, Texture> textureNameMap = new HashMap<>();
+	private List<Texture> allocatedTextures = new ArrayList<>();
+	private Map<Integer, IndexedRenderableTexture> textureIdMap = new HashMap<>();
+	private Map<String, IndexedRenderableTexture> textureNameMap = new HashMap<>();
 	
 	private static String findGameFolder() {
 		String path = System.getenv("APPDATA");
@@ -63,7 +68,8 @@ public class ResourceManager {
 	}
 	
 	private void clear() {
-		textureIdMap.forEach((id, texture) -> texture.delete());
+		allocatedTextures.forEach(Texture::delete);
+		allocatedTextures.clear();
 		textureIdMap.clear();
 		textureNameMap.clear();
 		nextTextureId.set(0);
@@ -73,47 +79,12 @@ public class ResourceManager {
 	private void loadTextures(String assetsPath) {
 		LOGGER.info("Loading Textures from: " + assetsPath);
 		
+		TextureFileParser parser = null;
 		try (InputStream is = ClassLoader.getSystemResourceAsStream(assetsPath + "/textures.json")) {
 			if (is != null) {
 				try (JsonReader reader = gson.newJsonReader(new InputStreamReader(is))) {
-					reader.beginArray();
-					while (reader.hasNext()) {
-						reader.beginObject();
-						String name = null;
-						String path = null;
-						while (reader.hasNext()) {
-							String key = reader.nextName();
-							if ("name".equalsIgnoreCase(key)) {
-								if (name != null)
-									LOGGER.info("Double defined Texture name \"" + name + "\"" + FileUtils.jsonReaderLocation(reader));
-								name = reader.nextString();
-							} else if ("path".equalsIgnoreCase(key)) {
-								if (path != null)
-									LOGGER.info("Double defined Texture path \"" + path + "\"" + FileUtils.jsonReaderLocation(reader));
-								path = reader.nextString();
-							} else {
-								LOGGER.info("Unknown Texture property \"" + key + "\"" + FileUtils.jsonReaderLocation(reader));
-								reader.skipValue();
-							}
-						}
-						if (name != null && path != null) {
-							int id = nextTextureId.getAndAdd(1);
-							name = name.toLowerCase();
-							if (!path.startsWith("/"))
-								path = '/' + path;
-							loadTexture(id, name, assetsPath + path);
-						} else {
-							String missing = "";
-							if (name == null)
-								missing += "and name";
-							if (path == null)
-								missing += "and path";
-							LOGGER.info("Incomplete Texture configuration, " + missing.substring(4) + " missing" + FileUtils
-									.jsonReaderLocation(reader));
-						}
-						reader.endObject();
-					}
-					reader.endArray();
+					parser = new TextureFileParser(reader, assetsPath, nextTextureId);
+					parser.parse();
 				}
 			} else {
 				LOGGER.warn("Could not find " + assetsPath + "/textures.json");
@@ -121,23 +92,40 @@ public class ResourceManager {
 		} catch (IOException e) {
 			LOGGER.warn("Error reading json", e);
 		}
-	}
-	
-	private void loadTexture(int id, String name, String totalPath) {
-		try (InputStream is = getClass().getClassLoader().getResourceAsStream(totalPath)) {
-			if (is != null) {
-				BufferedImage img = ImageIO.read(is);
-				Texture texture = Texture.load(id, name, img);
-				textureIdMap.put(id, texture);
-				Texture previous = textureNameMap.put(name, texture);
-				if (previous != null)
-					LOGGER.info("Two textures with same name: " + name);
-				LOGGER.debug("Successfully loaded texture #" + id + " \"" + name + "\" from " + totalPath);
-			} else {
-				LOGGER.warn("Could not find image " + totalPath + " \"" + name + "\"");
+		if (parser != null) {
+			for (PreTexture pre : parser.getTextures()) {
+				try (InputStream is = ClassLoader.getSystemResourceAsStream(pre.getTotalPath())) {
+					if (is != null) {
+						BufferedImage img = ImageIO.read(is);
+						SimpleTexture texture = SimpleTexture.load(new LoadedTexture(pre.getId(), pre.getName(), img));
+						allocatedTextures.add(texture);
+						textureIdMap.put(texture.getId(), texture);
+						textureNameMap.put(texture.getName(), texture);
+					}
+				} catch (IOException e) {
+					LOGGER.catching(e);
+				}
 			}
-		} catch (IOException e) {
-			LOGGER.warn("Error loading image " + totalPath + " \"" + name + "\"", e);
+			for (PreTextureAtlas preAtlas : parser.getAtlases()) {
+				List<LoadedTexture> loadedTextures = new ArrayList<>();
+				for (PreTexture pre : preAtlas.getPreTextures()) {
+					try (InputStream is = ClassLoader.getSystemResourceAsStream(pre.getTotalPath())) {
+						if (is != null) {
+							BufferedImage img = ImageIO.read(is);
+							loadedTextures.add(new LoadedTexture(pre.getId(), pre.getName(), img));
+						}
+					} catch (IOException e) {
+						LOGGER.catching(e);
+					}
+				}
+				TextureAtlas atlas = TextureAtlas
+						.load(new LoadedTextureAtlas(preAtlas.getName(), preAtlas.getSize(), preAtlas.getImageSize(), loadedTextures));
+				allocatedTextures.add(atlas);
+				for (SubTexture sub : atlas.getSubTextures()) {
+					textureIdMap.put(sub.getId(), sub);
+					textureNameMap.put(sub.getName(), sub);
+				}
+			}
 		}
 	}
 	
@@ -147,21 +135,22 @@ public class ResourceManager {
 		img.setRGB(0, 0, 2, 2, pixels, 0, 2);
 		int id = nextTextureId.getAndAdd(1);
 		assert id == 0;
-		Texture texture = Texture.load(id, null, img);
+		SimpleTexture texture = SimpleTexture.load(new LoadedTexture(id, null, img));
+		allocatedTextures.add(texture);
 		textureIdMap.put(id, texture);
 		textureNameMap.put(null, texture);
 	}
 	
-	public Texture getTexture(String name) {
+	public IndexedRenderableTexture getTexture(String name) {
 		return textureNameMap.getOrDefault(name, textureNameMap.get(null));
 	}
 	
-	public Texture getTexture(int id) {
+	/*public IndexedTexture getTexture(int id) {
 		return textureIdMap.getOrDefault(id, textureIdMap.get(0));
 	}
 	
 	public int getTextureId(String name) {
 		return textureNameMap.getOrDefault(name, textureNameMap.get(null)).getId();
-	}
+	}*/
 	
 }

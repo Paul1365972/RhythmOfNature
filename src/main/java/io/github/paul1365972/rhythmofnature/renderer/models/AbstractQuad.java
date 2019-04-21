@@ -49,11 +49,15 @@ public abstract class AbstractQuad {
 		return vbo;
 	}
 	
-	protected void defineVertexAttribMat4(int index) {
-		defineVertexAttrib(index++, 4, S_FM44, 0 * S_FV4, 1);
-		defineVertexAttrib(index++, 4, S_FM44, 1 * S_FV4, 1);
-		defineVertexAttrib(index++, 4, S_FM44, 2 * S_FV4, 1);
-		defineVertexAttrib(index, 4, S_FM44, 3 * S_FV4, 1);
+	protected void defineVertexAttribMat4(int index, int stride, int offset) {
+		defineVertexAttrib(index++, 4, stride, offset + 0 * S_FV4, 1);
+		defineVertexAttrib(index++, 4, stride, offset + 1 * S_FV4, 1);
+		defineVertexAttrib(index++, 4, stride, offset + 2 * S_FV4, 1);
+		defineVertexAttrib(index, 4, stride, offset + 3 * S_FV4, 1);
+	}
+	
+	protected void defineVertexAttribVec4(int index, int stride, int offset) {
+		defineVertexAttrib(index, 4, stride, offset, 1);
 	}
 	
 	protected void defineVertexAttrib(int index, int size, int stride, int offset, int divisor) {

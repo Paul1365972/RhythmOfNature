@@ -76,7 +76,6 @@ public class Display {
 		
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		glfwSetCursor(window, glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR));
-		glfwSetWindowAspectRatio(window, NUMERATOR, DENOMINATOR);
 		
 		int fbw, fbh, ww, wh;
 		try (MemoryStack stack = MemoryStack.stackPush()) {

@@ -1,6 +1,6 @@
 package io.github.paul1365972.rhythmofnature.renderer.fbo;
 
-import io.github.paul1365972.rhythmofnature.renderer.objects.DynTexture;
+import io.github.paul1365972.rhythmofnature.renderer.textures.Texture;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -17,9 +17,9 @@ public abstract class AbstractFbo {
 	
 	private int frameBuffer;
 	
-	private DynTexture depthTexture;
+	private Texture depthTexture;
 	
-	private DynTexture[] colorTexture;
+	private Texture[] colorTexture;
 	
 	private int width, height;
 	
@@ -28,7 +28,7 @@ public abstract class AbstractFbo {
 	public AbstractFbo(int width, int height) {
 		this.width = width;
 		this.height = height;
-		this.colorTexture = new DynTexture[32];
+		this.colorTexture = new Texture[32];
 		
 		createFrameBuffer();
 		resize(width, height);
@@ -70,11 +70,11 @@ public abstract class AbstractFbo {
 	}
 	
 	protected void addColorTexture2D(int colorAttachment, int magFilter, int minFilter) {
-		DynTexture old = colorTexture[colorAttachment];
+		Texture old = colorTexture[colorAttachment];
 		if (old != null && old.isValid())
 			old.delete();
 		int texture = GL11.glGenTextures();
-		colorTexture[colorAttachment] = new DynTexture(texture);
+		colorTexture[colorAttachment] = new Texture(texture);
 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, magFilter);
 		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, minFilter);
@@ -88,7 +88,7 @@ public abstract class AbstractFbo {
 		if (depthTexture != null && depthTexture.isValid())
 			depthTexture.delete();
 		int texture = GL11.glGenTextures();
-		depthTexture = new DynTexture(texture);
+		depthTexture = new Texture(texture);
 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, magFilter);
 		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, minFilter);
@@ -122,11 +122,11 @@ public abstract class AbstractFbo {
 	}
 	
 	
-	public DynTexture getColorTexture(int colorAttachment) {
+	public Texture getColorTexture(int colorAttachment) {
 		return colorTexture[colorAttachment];
 	}
 	
-	public DynTexture getDepthTexture() {
+	public Texture getDepthTexture() {
 		return depthTexture;
 	}
 	
@@ -139,7 +139,7 @@ public abstract class AbstractFbo {
 	}
 	
 	private void deleteTextures() {
-		for (DynTexture tex : colorTexture) {
+		for (Texture tex : colorTexture) {
 			if (tex != null && tex.isValid())
 				tex.delete();
 		}

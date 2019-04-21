@@ -6,9 +6,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class RhythmOfNature {
+	private static final Logger LOGGER = LogManager.getLogger();
+	
 	public static final String NAME = "RhythmOfNature";
 	public static final String VERSION = "0.0.1 Snapshot";
-	private static final Logger LOGGER = LogManager.getLogger();
 	
 	public void run() {
 		//try { Thread.sleep(10 * 1000); } catch (InterruptedException ignored) { }

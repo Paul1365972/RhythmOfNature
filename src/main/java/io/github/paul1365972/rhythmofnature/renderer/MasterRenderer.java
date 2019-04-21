@@ -7,10 +7,10 @@ import io.github.paul1365972.rhythmofnature.renderer.fbo.DefaultFbo;
 import io.github.paul1365972.rhythmofnature.renderer.fbo.ViewFbo;
 import io.github.paul1365972.rhythmofnature.renderer.models.Quad;
 import io.github.paul1365972.rhythmofnature.renderer.models.Quads;
-import io.github.paul1365972.rhythmofnature.renderer.objects.DynTexture;
 import io.github.paul1365972.rhythmofnature.renderer.shader.GuiShader;
+import io.github.paul1365972.rhythmofnature.renderer.shader.InstancedAtlasShader;
 import io.github.paul1365972.rhythmofnature.renderer.shader.PPShader;
-import io.github.paul1365972.rhythmofnature.renderer.shader.ParticleShader;
+import io.github.paul1365972.rhythmofnature.renderer.textures.Texture;
 import io.github.paul1365972.rhythmofnature.util.MvpMatrix;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -21,7 +21,7 @@ public class MasterRenderer {
 	private ViewFbo viewFbo;
 	
 	private GuiShader guiShader;
-	private ParticleShader particleShader;
+	private InstancedAtlasShader particleShader;
 	private PPShader ppShader;
 	
 	private Quad quad;
@@ -44,11 +44,15 @@ public class MasterRenderer {
 		viewFbo = new ViewFbo(context.getDisplay().getViewFramebufferWidth(), context.getDisplay().getViewFramebufferHeight());
 		
 		guiShader = new GuiShader();
-		particleShader = new ParticleShader();
+		particleShader = new InstancedAtlasShader();
 		ppShader = new PPShader();
 		
 		quad = new Quad();
 		quads = new Quads();
+	}
+	
+	public void renderObjects() {
+	
 	}
 	
 	public void render(Context context) {
@@ -60,17 +64,18 @@ public class MasterRenderer {
 		particleShader.start();
 		
 		GL13.glActiveTexture(GL13.GL_TEXTURE0);
-		GL11.glBindTexture(GL11.GL_TEXTURE_2D, rm.getTexture("white").getTexture());
+		GL11.glBindTexture(GL11.GL_TEXTURE_2D, rm.getTexture("player2").getBackingTexture());
 		
 		quads.reset();
 		MvpMatrix mat = new MvpMatrix();
 		mat.setProjection();
 		mat.setView(0, 0, 0, 1, 1);
 		
-		for (int i = -40; i < 40; i++) {
-			for (int j = -40; j < 40; j++) {
-				mat.setModel(i / 50f, j / 50f, 0, 1 / 80f, 1 / 80f);
-				quads.push(mat.get());
+		for (int i = -10; i < 10; i++) {
+			for (int j = -10; j < 10; j++) {
+				mat.setModel(i / 15f, j / 15f, 0, 1 / 17f, 1 / 17f);
+				String texName = i % 2 == 0 ? (j % 2 == 0 ? "white2" : "player2") : (j % 2 == 0 ? "blue2" : "green2");
+				quads.push(mat.get(), rm.getTexture(texName).getAtlasPos());
 			}
 		}
 		
@@ -96,7 +101,7 @@ public class MasterRenderer {
 		ppShader.start();
 		
 		GL13.glActiveTexture(GL13.GL_TEXTURE0);
-		DynTexture tex = viewFbo.getColorTexture(0);
+		Texture tex = viewFbo.getColorTexture(0);
 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, tex.getTexture());
 		
 		quad.draw();
