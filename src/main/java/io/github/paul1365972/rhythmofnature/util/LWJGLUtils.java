@@ -1,11 +1,13 @@
 package io.github.paul1365972.rhythmofnature.util;
 
 import io.github.paul1365972.rhythmofnature.client.Context;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.ARBDebugOutput;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL43;
+import org.lwjgl.opengl.GL46;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.KHRDebug;
 import org.lwjgl.system.Configuration;
@@ -13,9 +15,6 @@ import org.lwjgl.system.Configuration;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
 
 public class LWJGLUtils {
 	private static final Logger LOGGER = LogManager.getLogger();
@@ -40,23 +39,26 @@ public class LWJGLUtils {
 		GLCapabilities caps = context.getDisplay().getCapabilities();
 		DebugMessageControlFunction func = null;
 		
-		if (caps.OpenGL43)
+		if (caps.OpenGL43) {
+			GL11.glEnable(GL46.GL_DEBUG_OUTPUT_SYNCHRONOUS);
 			func = GL43::glDebugMessageControl;
-		else if (caps.GL_KHR_debug)
+		} else if (caps.GL_KHR_debug) {
+			GL11.glEnable(KHRDebug.GL_DEBUG_OUTPUT_SYNCHRONOUS);
 			func = KHRDebug::glDebugMessageControl;
-		else if (caps.GL_ARB_debug_output)
+		} else if (caps.GL_ARB_debug_output) {
+			GL11.glEnable(ARBDebugOutput.GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
 			func = ARBDebugOutput::glDebugMessageControlARB;
-		else if (caps.GL_AMD_debug_output)
+		} else if (caps.GL_AMD_debug_output) {
 			LOGGER.warn("AMD Debug Output Message Control not supported");
-		else
+		} else {
 			LOGGER.warn("No Message Control found");
+		}
 		
-		if (func == null)
-			return;
-		
-		func.invoke(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, null, true);
-		//func.invoke(GL43.GL_DEBUG_SOURCE_API, GL43.GL_DEBUG_TYPE_OTHER, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
-		func.invoke(GL43.GL_DEBUG_SOURCE_API, GL43.GL_DEBUG_TYPE_OTHER, GL43.GL_DONT_CARE, new int[] {0x20061, 0x20071}, false);
+		if (func != null) {
+			func.invoke(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, null, true);
+			//func.invoke(GL43.GL_DEBUG_SOURCE_API, GL43.GL_DEBUG_TYPE_OTHER, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
+			func.invoke(GL43.GL_DEBUG_SOURCE_API, GL43.GL_DEBUG_TYPE_OTHER, GL43.GL_DONT_CARE, new int[] {0x20061/*, 0x20071*/}, false);
+		}
 	}
 	
 	@FunctionalInterface
@@ -65,32 +67,27 @@ public class LWJGLUtils {
 	}
 	
 	private static class Log4jDebugStream extends OutputStream {
-		private SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss.SSS");
+		private Charset cs = Charset.defaultCharset();
 		
-		private PrintStream out = System.out;
-		private boolean newLine = true;
+		private byte[] newLineBytes = System.lineSeparator().getBytes(cs);
 		
-		private byte[] newLineBytes = System.lineSeparator().getBytes(Charset.defaultCharset());
-		private byte[] buffer = new byte[newLineBytes.length];
+		private ByteArrayList bytes = new ByteArrayList();
 		
 		@Override
 		public void write(int b) {
-			if (newLine)
-				out.print("[" + df.format(new Date()) + "] [" + Thread.currentThread().getName() + "/DEBUG]: [LWJGLUtils] ");
-			out.write(b);
-			System.arraycopy(buffer, 1, buffer, 0, buffer.length - 1);
-			buffer[buffer.length - 1] = (byte) b;
-			newLine = Arrays.equals(buffer, newLineBytes);
-		}
-		
-		@Override
-		public void flush() {
-			out.flush();
-		}
-		
-		@Override
-		public void close() {
-			out.close();
+			bytes.add((byte) b);
+			int offset = bytes.size() - newLineBytes.length;
+			if (offset > 0) {
+				boolean newLine = true;
+				for (int i = 0; newLine && i < newLineBytes.length; i++) {
+					newLine = bytes.getByte(offset + i) == newLineBytes[i];
+				}
+				if (newLine) {
+					String logMessage = new String(bytes.toByteArray(), 0, bytes.size() - newLineBytes.length, cs);
+					bytes.clear();
+					LOGGER.debug(logMessage);
+				}
+			}
 		}
 	}
 }

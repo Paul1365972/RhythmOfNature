@@ -2,11 +2,11 @@
 <Configuration packages="io.github.paul1365972.rhythmofnature" status="INFO">
     <Appenders>
         <Console name="stdout" target="SYSTEM_OUT">
-            <PatternLayout pattern="[%d{HH:mm:ss.SSS}] [%-11t/%-5level]: [%-15c{1}] %msg%n%throwable" />
+            <PatternLayout pattern="[%d{HH:mm:ss.SSS}] [%-11.-11t/%-5.-5level]: [%-15.-15c{1}] %msg%n%throwable" />
             <ThresholdFilter level="WARN" onMatch="DENY" onMismatch="ACCEPT" />
         </Console>
         <Console name="stderr" target="SYSTEM_ERR">
-            <PatternLayout pattern="[%d{HH:mm:ss.SSS}] [%t/%level]: [%c{1}] %msg%n%throwable" />
+            <PatternLayout pattern="[%d{HH:mm:ss.SSS}] [%-11t/%-5level]: [%-15c{1}] %msg%n%throwable" />
         </Console>
     </Appenders>
     <Loggers>
