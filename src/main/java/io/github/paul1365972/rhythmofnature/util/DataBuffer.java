@@ -3,7 +3,6 @@ package io.github.paul1365972.rhythmofnature.util;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryUtil;
 
-import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -14,24 +13,7 @@ public class DataBuffer {
 	
 	private static final Function<Integer, ByteBuffer> BUFFER_FACTORY = BufferUtils::createByteBuffer;
 	
-	private static final sun.misc.Unsafe UNSAFE;
-	private static final long MARK, POSITION, LIMIT;
-	
-	static {
-		try {
-			Field field;
-			(field = MemoryUtil.class.getDeclaredField("UNSAFE")).setAccessible(true);
-			UNSAFE = (sun.misc.Unsafe) field.get(null);
-			(field = MemoryUtil.class.getDeclaredField("MARK")).setAccessible(true);
-			MARK = field.getLong(null);
-			(field = MemoryUtil.class.getDeclaredField("POSITION")).setAccessible(true);
-			POSITION = field.getLong(null);
-			(field = MemoryUtil.class.getDeclaredField("LIMIT")).setAccessible(true);
-			LIMIT = field.getLong(null);
-		} catch (NoSuchFieldException | IllegalAccessException e) {
-			throw new UnsupportedOperationException();
-		}
-	}
+	private static final BufferAccessor BUFFER_ACCESSOR = BufferAccessor.get();
 	
 	private ByteBuffer bBuffer;
 	private FloatBuffer fBuffer;
@@ -299,9 +281,9 @@ public class DataBuffer {
 	
 	public DataBuffer finishBytes() {
 		modified = null;
-		int mark = UNSAFE.getInt(bBuffer, MARK);
-		int pos = UNSAFE.getInt(bBuffer, POSITION);
-		int limit = UNSAFE.getInt(bBuffer, LIMIT);
+		int mark = BUFFER_ACCESSOR.getMark(bBuffer);
+		int pos = BUFFER_ACCESSOR.getPosition(bBuffer);
+		int limit = BUFFER_ACCESSOR.getLimit(bBuffer);
 		if ((mark >= 0 && mark % 4 != 0) || pos % 4 != 0 || limit % 4 != 0) throw new IllegalStateException("");
 		set(fBuffer, mark >= 0 ? mark >> 2 : -1, pos >> 2, limit >> 2);
 		set(iBuffer, mark >= 0 ? mark >> 2 : -1, pos >> 2, limit >> 2);
@@ -310,9 +292,9 @@ public class DataBuffer {
 	
 	public DataBuffer finishFloats() {
 		modified = null;
-		int mark = UNSAFE.getInt(fBuffer, MARK);
-		int pos = UNSAFE.getInt(fBuffer, POSITION);
-		int limit = UNSAFE.getInt(fBuffer, LIMIT);
+		int mark = BUFFER_ACCESSOR.getMark(bBuffer);
+		int pos = BUFFER_ACCESSOR.getPosition(bBuffer);
+		int limit = BUFFER_ACCESSOR.getLimit(bBuffer);
 		set(bBuffer, mark >= 0 ? mark << 2 : -1, pos << 2, limit << 2);
 		set(iBuffer, mark, pos, limit);
 		return this;
@@ -320,9 +302,9 @@ public class DataBuffer {
 	
 	public DataBuffer finishInts() {
 		modified = null;
-		int mark = UNSAFE.getInt(iBuffer, MARK);
-		int pos = UNSAFE.getInt(iBuffer, POSITION);
-		int limit = UNSAFE.getInt(iBuffer, LIMIT);
+		int mark = BUFFER_ACCESSOR.getMark(bBuffer);
+		int pos = BUFFER_ACCESSOR.getPosition(bBuffer);
+		int limit = BUFFER_ACCESSOR.getLimit(bBuffer);
 		set(bBuffer, mark >= 0 ? mark << 2 : -1, pos << 2, limit << 2);
 		set(fBuffer, mark, pos, limit);
 		return this;
@@ -360,17 +342,18 @@ public class DataBuffer {
 	}
 	
 	private void set(Buffer buffer, int mark, int position, int limit) {
-		UNSAFE.putInt(buffer, MARK, mark);
-		UNSAFE.putInt(buffer, POSITION, position);
-		UNSAFE.putInt(buffer, LIMIT, limit);
+		if (mark >= position || position >= limit)
+			throw new IllegalArgumentException("mark <= pos <= limit (Mark: " + mark + ", Pos: " + position + ", Limit: " + limit + ")");
+		BUFFER_ACCESSOR.set(buffer, mark, position, limit);
 	}
 	
 	public DataBuffer resize(int capacity, boolean keepLimit) {
 		finishAndMod(BufferType.BYTE);
 		
-		int mark = UNSAFE.getInt(bBuffer, MARK);
-		int pos = UNSAFE.getInt(bBuffer, POSITION);
-		int limit = UNSAFE.getInt(bBuffer, LIMIT);
+		int mark = BUFFER_ACCESSOR.getMark(bBuffer);
+		int pos = BUFFER_ACCESSOR.getPosition(bBuffer);
+		int limit = BUFFER_ACCESSOR.getLimit(bBuffer);
+		
 		bBuffer.position(0).limit(bBuffer.capacity());
 		ByteBuffer newBuffer = BUFFER_FACTORY.apply(capacity);
 		newBuffer.put(bBuffer);
